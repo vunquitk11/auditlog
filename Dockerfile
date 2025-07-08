@@ -4,6 +4,7 @@ WORKDIR /app
 RUN apk add --no-cache git
 COPY go.mod go.sum ./
 RUN go mod download
+RUN go mod tidy
 COPY . .
 RUN go build -o /auditlog cmd/serverd/main.go
 # Install mockery
