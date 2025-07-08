@@ -9,36 +9,21 @@ on:
       - main
 
 jobs:
-
-  checkout_and_setup_go:
-    name: Checkout and Setup Go
+  build_and_test:
+    name: Build and Test
     runs-on: ubuntu-latest
-    outputs:
-      go-version: 1.23
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.23
-
-  install_dependencies:
-    name: Install Dependencies
-    runs-on: ubuntu-latest
-    needs: checkout_and_setup_go
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v5
         with:
           go-version: 1.23
 
       - name: Cache Go modules
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.cache/go-build
@@ -47,73 +32,29 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Install Go dependencies
+      - name: Download dependencies
         run: go mod download
 
-  run_tests:
-    name: Run Tests
-    runs-on: ubuntu-latest
-    needs: install_dependencies
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - name: Docker Compose Up
+        run: docker compose up -d --build
 
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.23
-
-      - name: Cache Go modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Install Docker Compose
-        run: |
-          sudo apt-get update
-          sudo apt-get install docker-compose -y
-
-      - name: Run tests
+      - name: Run Tests
         run: make test
 
-  build_application:
-    name: Build Application
-    runs-on: ubuntu-latest
-    needs: run_tests
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
-      - name: Set up Go
-        uses: actions/setup-go@v2
-        with:
-          go-version: 1.23
-
-      - name: Cache Go modules
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-          restore-keys: |
-            ${{ runner.os }}-go-
-
-      - name: Build the application
+      - name: Build Application
         run: make build
+
+      - name: Docker Compose Down
+        if: always()
+        run: docker compose down -v --remove-orphans
 
   fake_deploy:
     name: Fake Deploy
     runs-on: ubuntu-latest
-    needs: build_application
+    needs: build_and_test
     steps:
       - name: Fake deploy
         run: |
           echo "Starting fake deploy..."
-          sleep 10
+          sleep 5
           echo "Fake deploy completed."
