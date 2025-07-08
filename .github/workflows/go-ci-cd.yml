@@ -21,29 +21,14 @@ jobs:
       with:
         go-version: 1.23
 
-    - name: Cache Go modules
-      uses: actions/cache@v3
-      with:
-        path: |
-          ~/.cache/go-build
-          ~/go/pkg/mod
-        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-        restore-keys: |
-          ${{ runner.os }}-go-
-
     - name: Install dependencies
       run: go mod download
 
-    - name: Install Docker Compose
-      run: |
-        sudo apt-get update
-        sudo apt-get install docker-compose -y
-
     - name: Run tests
-      run: make test
+      run: go test -mod=mod -coverprofile=c.out -failfast -timeout 5m ./...
 
-    - name: Build
-      run: make build
+    - name: Build application
+      run: go build -mod=mod -o /auditlog cmd/serverd/main.go
 
   fake_deploy:
     runs-on: ubuntu-latest
