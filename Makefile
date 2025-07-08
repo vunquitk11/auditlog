@@ -29,31 +29,31 @@ up:
 
 # Build & Run
 build:
-	${API_COMPOSE} sh -c "go build -mod=vendor -o bin/auditlog cmd/serverd/main.go"
+	${API_COMPOSE} sh -c "go build -o bin/auditlog cmd/serverd/main.go"
 
 # Run main application only (without producers)
 run-app:
-	${API_COMPOSE} sh -c "go run -mod=vendor cmd/serverd/main.go"
+	${API_COMPOSE} sh -c "go run cmd/serverd/main.go"
 
 # Legacy run command (kept for backward compatibility)
 run: run-app
 
 # Kafka Producers - Separate from main app
 build-producers:
-	${API_COMPOSE} sh -c "go build -mod=vendor -o bin/user-producer cmd/producer-user/main.go"
-	${API_COMPOSE} sh -c "go build -mod=vendor -o bin/payment-producer cmd/producer-payment/main.go"
+	${API_COMPOSE} sh -c "go build -o bin/user-producer cmd/producer-user/main.go"
+	${API_COMPOSE} sh -c "go build -o bin/payment-producer cmd/producer-payment/main.go"
 
 # Run individual producers
 run-user-producer:
-	${COMPOSE} run --name ${PROJECT_NAME}-user-producer --rm -w /app app sh -c "go run -mod=vendor cmd/producer-user/main.go"
+	${COMPOSE} run --name ${PROJECT_NAME}-user-producer --rm -w /app app sh -c "go run cmd/producer-user/main.go"
 
 run-payment-producer:
-	${COMPOSE} run --name ${PROJECT_NAME}-payment-producer --rm -w /app app sh -c "go run -mod=vendor cmd/producer-payment/main.go"
+	${COMPOSE} run --name ${PROJECT_NAME}-payment-producer --rm -w /app app sh -c "go run cmd/producer-payment/main.go"
 
 # Run both producers in separate containers
 run-producers:
-	${COMPOSE} run --name ${PROJECT_NAME}-user-producer --rm -w /app app sh -c "go run -mod=vendor cmd/producer-user/main.go" &
-	${COMPOSE} run --name ${PROJECT_NAME}-payment-producer --rm -w /app app sh -c "go run -mod=vendor cmd/producer-payment/main.go" &
+	${COMPOSE} run --name ${PROJECT_NAME}-user-producer --rm -w /app app sh -c "go run cmd/producer-user/main.go" &
+	${COMPOSE} run --name ${PROJECT_NAME}-payment-producer --rm -w /app app sh -c "go run cmd/producer-payment/main.go" &
 	@echo "Both producers started. Use 'make stop-producers' to stop them."
 
 stop-producers:
@@ -82,7 +82,7 @@ reset-db: drop migrate
 
 # Test & Mocks
 test:
-	${API_COMPOSE} sh -c "go test -mod=vendor -coverprofile=c.out -failfast -timeout 5m ./..."
+	${API_COMPOSE} sh -c "go test -coverprofile=c.out -failfast -timeout 5m ./..."
 mocks:
 	${API_COMPOSE} sh -c "mockery --all --recursive --inpackage --output internal/mocks"
 api-gen-mocks:
@@ -110,7 +110,7 @@ vendor:
 
 # Clean
 clean:
-	${API_COMPOSE} sh -c "go clean -mod=vendor -i -x ./..."
+	${API_COMPOSE} sh -c "go clean -i -x ./..."
 
 # Start auditlog consumer manually
 run-auditlog-consumer:
