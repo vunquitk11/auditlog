@@ -1,6 +1,8 @@
 module github.com/audit-log-service
 
-go 1.23
+go 1.23.0
+
+toolchain go1.23.10
 
 require (
 	github.com/IBM/sarama v1.45.2
