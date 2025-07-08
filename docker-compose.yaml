@@ -1,0 +1,193 @@
+version: '3.8'
+
+services:
+  # PostgreSQL database for storing audit logs
+  db:
+    image: postgres:15
+    container_name: auditlog-db
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auditlog
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./data/migrations:/migrations
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # Zookeeper for Kafka cluster coordination
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.4.0
+    container_name: auditlog-zookeeper
+    restart: unless-stopped
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+    volumes:
+      - zookeeper-data:/var/lib/zookeeper/data
+      - zookeeper-logs:/var/lib/zookeeper/log
+
+  # Kafka message broker for handling audit log events
+  kafka:
+    image: confluentinc/cp-kafka:7.4.0
+    container_name: auditlog-kafka
+    restart: unless-stopped
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"  # External access for producers
+      - "9101:9101"  # JMX monitoring
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: 'zookeeper:2181'
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_JMX_PORT: 9101
+      KAFKA_JMX_HOSTNAME: localhost
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: 'true'
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+      - ./scripts/kafka-init.sh:/docker-entrypoint-initdb.d/kafka-init.sh:ro
+
+  # Kafka UI for monitoring topics, messages, and consumer groups
+  kafka-ui:
+    image: provectuslabs/kafka-ui:latest
+    container_name: auditlog-kafka-ui
+    restart: unless-stopped
+    depends_on:
+      - kafka
+    ports:
+      - "8081:8080"  # Access at http://localhost:8081
+    environment:
+      KAFKA_CLUSTERS_0_NAME: local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092
+      KAFKA_CLUSTERS_0_ZOOKEEPER: zookeeper:2181
+
+  # Main audit log service application
+  app:
+    build: .
+    container_name: auditlog-app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "8080:8080"  # REST API endpoint
+    environment:
+      - DB_HOST=db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=auditlog
+      - DB_PORT=5432
+      - APP_PORT=8080
+      - KAFKA_BROKERS=kafka:29092  # Internal Kafka connection
+    depends_on:
+      - db
+      - kafka
+    volumes:
+      - .:/app
+    working_dir: /app
+
+  auditlog-consumer:
+    build: .
+    container_name: auditlog-consumer
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - db
+      - kafka
+    environment:
+      - DB_HOST=db
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - DB_NAME=auditlog
+      - DB_PORT=5432
+      - KAFKA_BROKERS=kafka:29092
+      - KAFKA_TOPIC=audit-logs
+      - KAFKA_CONSUMER_GROUP=audit-log-consumer
+    command: go run cmd/auditlogconsumer/main.go
+    working_dir: /app
+    volumes:
+      - .:/app
+    ports:
+      - "2112:2112"
+
+  user-producer:
+    build: .
+    container_name: user-producer
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - kafka
+    environment:
+      - KAFKA_BROKERS=kafka:29092
+      - KAFKA_TOPIC=audit-logs
+    command: go run cmd/producer-user/main.go
+    working_dir: /app
+    volumes:
+      - .:/app
+
+  payment-producer:
+    build: .
+    container_name: payment-producer
+    restart: unless-stopped
+    env_file:
+      - .env
+    depends_on:
+      - kafka
+    environment:
+      - KAFKA_BROKERS=kafka:29092
+      - KAFKA_TOPIC=audit-logs
+    command: go run cmd/producer-payment/main.go
+    working_dir: /app
+    volumes:
+      - .:/app
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - auditlog-consumer
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      - GF_SECURITY_ADMIN_USER=${GF_SECURITY_ADMIN_USER}
+      - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+    depends_on:
+      - prometheus
+
+# Persistent volumes for data storage
+volumes:
+  pgdata:          # PostgreSQL data
+  zookeeper-data:  # Zookeeper data
+  zookeeper-logs:  # Zookeeper logs
+  kafka-data:      # Kafka data
