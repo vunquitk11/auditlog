@@ -3,7 +3,7 @@
 # Variables
 PROJECT_NAME := auditlog
 DOCKER_BIN := docker
-DOCKER_COMPOSE_BIN := docker-compose
+DOCKER_COMPOSE_BIN := docker compose
 
 COMPOSE := PROJECT_NAME=${PROJECT_NAME} ${DOCKER_COMPOSE_BIN} -f docker-compose.yaml
 API_COMPOSE = ${COMPOSE} run --name ${PROJECT_NAME}-api-$${CONTAINER_SUFFIX:-local} --rm -w /app app
@@ -93,9 +93,9 @@ api-gen-mocks:
 
 # Automatically bring up db before migrating
 migrate:
-	@docker-compose up -d db
+	@docker compose up -d db
 	@sleep 3
-	@docker-compose exec db sh -c 'for f in /migrations/*.up.sql; do psql -U postgres -d auditlog -f "$$f"; done'
+	@docker compose exec db sh -c 'for f in /migrations/*.up.sql; do psql -U postgres -d auditlog -f "$$f"; done'
 
 # Drop tables using all down.sql files in the migrations folder
 drop:

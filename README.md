@@ -48,7 +48,7 @@ graph TD;
 
 2. **Start the services with Docker Compose**:
    ```bash
-   docker-compose up -d
+   docker compose up -d
    ```
 
 3. **Run the application**:
@@ -323,7 +323,7 @@ SELECT * FROM audit_logs ORDER BY timestamp DESC LIMIT 10;
 
 ```bash
 # Check if all services are running
-docker-compose ps
+docker compose ps
 
 # Check Kafka topic
 docker exec auditlog-kafka kafka-topics --list --bootstrap-server localhost:9092
