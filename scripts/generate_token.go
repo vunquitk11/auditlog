@@ -9,6 +9,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// To generate a token, run the following command in your terminal:
+// go run scripts/generate_token.go
+
 func main() {
 	err := godotenv.Load(".env")
 	if err != nil {

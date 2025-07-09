@@ -73,16 +73,6 @@ graph TD;
   make run-app
   ```
 
-- **Run Kafka producers**:
-  - User producer:
-    ```bash
-    make run-user-producer
-    ```
-  - Payment producer:
-    ```bash
-    make run-payment-producer
-    ```
-
 - **Run tests**:
   ```bash
   make test
@@ -167,6 +157,13 @@ Access Kafka UI at `http://localhost:8081` to monitor:
 - Message content
 
 ## API Endpoints
+
+### Ping Server
+```bash
+GET http://localhost:8080/api/v1/ping
+```
+
+This endpoint can be used to check if the server is running and responsive.
 
 ### Get Audit Logs
 ```bash
@@ -342,30 +339,6 @@ make stop-producers
 make teardown
 ```
 
-## Architecture Diagram
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   User Producer │    │ Payment Producer│    │  Other Services │
-└─────────┬───────┘    └─────────┬───────┘    └─────────┬───────┘
-          │                      │                      │
-          └──────────────────────┼──────────────────────┘
-                                 │
-                    ┌─────────────▼─────────────┐
-                    │        Kafka Topic        │
-                    │     (audit-logs)          │
-                    └─────────────┬─────────────┘
-                                  │
-                    ┌─────────────▼─────────────┐
-                    │   Audit Log Service       │
-                    │   (Kafka Consumer)        │
-                    └─────────────┬─────────────┘
-                                  │
-                    ┌─────────────▼─────────────┐
-                    │     PostgreSQL DB         │
-                    └───────────────────────────┘
-```
-
 ## Contributing
 
 1. Follow the existing code structure
@@ -375,4 +348,17 @@ make teardown
 
 ## License
 
-This project is licensed under the MIT License. 
+This project is licensed under the MIT License.
+
+## Authentication
+
+To generate a JWT token for accessing the API, use the `generate_token.go` script:
+
+1. **Set up your environment**: Ensure you have a `.env` file with the `SECRET_KEY` variable set.
+
+2. **Generate the token**:
+   ```bash
+   go run scripts/generate_token.go
+   ```
+
+This will output a JWT token that can be used for authentication. 
