@@ -57,7 +57,7 @@ graph TD;
    ```
 
 4. **Access the dashboards**:
-   - **Grafana**: [http://localhost:3000](http://localhost:3000) (admin/admin)
+   - **Grafana**: [http://localhost:3000](http://localhost:3000) (vunq041298/vunq041298)
    - **Prometheus**: [http://localhost:9090](http://localhost:9090)
    - **Kafka UI**: [http://localhost:8080](http://localhost:8080)
 
