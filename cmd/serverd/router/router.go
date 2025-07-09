@@ -2,10 +2,14 @@ package router
 
 import (
 	"net/http"
+	"os"
 	"strings"
 
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt"
 )
+
+const requiredScope = "read:auditlogs"
 
 func (r Router) Handler() *gin.Engine {
 	engine := gin.Default()
@@ -18,7 +22,7 @@ func (r Router) Handler() *gin.Engine {
 
 	// Authenticated group (JWT required)
 	auth := engine.Group("/api")
-	auth.Use(jwtAuthMiddleware())
+	auth.Use(jwtAuthMiddleware(), scopeCheckMiddleware())
 	{
 		auth.GET("/audit-logs", r.authenticatedRESTHandler.GetAuditLogs)
 	}
@@ -41,5 +45,22 @@ func jwtAuthMiddleware() gin.HandlerFunc {
 		}
 		// Optionally: validate JWT here
 		c.Next()
+	}
+}
+
+func scopeCheckMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		tokenString := c.GetHeader("Authorization")
+		token, _ := jwt.Parse(strings.TrimPrefix(tokenString, "Bearer "), func(token *jwt.Token) (interface{}, error) {
+			return []byte(os.Getenv("SECRET_KEY")), nil
+		})
+
+		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+			if scope, ok := claims["scope"].(string); ok && strings.Contains(scope, requiredScope) {
+				c.Next()
+				return
+			}
+		}
+		c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Forbidden"})
 	}
 }
