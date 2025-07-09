@@ -38,11 +38,6 @@ jobs:
       - name: Docker Compose Up
         run: docker compose up -d --build
 
-      - name: Install Docker Compose
-        run: |
-          sudo apt-get update
-          sudo apt-get install docker compose -y
-
       - name: Run Tests
         run: make test
 
